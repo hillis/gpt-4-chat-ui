@@ -98,13 +98,13 @@ useEffect(() => {
     <>
       <Head>
         <title>Chat UI</title>
-        <meta name="description" content="GPT-4 interface" />
+        <meta name="description" content="OpenAI interface" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <div className={styles.topnav}>
         <div className={styles.navlogo}>
-          <a href="/">GPT-4 Chat UI</a>
+          <a href="/">Chat UI</a>
         </div>
         <div className={styles.navlinks}>
           <a
@@ -113,9 +113,7 @@ useEffect(() => {
           >
             Docs
           </a>
-          <a href="https://replit.com/@zahid/GPT-4-UI" target="_blank">
-            Replit
-          </a>
+          
         </div>
       </div>
       <main className={styles.main}>
