@@ -17,14 +17,31 @@ These instructions will help you set up the project on your local machine.
 ### **Prerequisites**
 
 - Node.js >= 14.x
-- Yarn or npm (Yarn is recommended)
+- npm
+
+### **Dependencies**
+
+- **`@emotion/react`**: ^11.10.6
+- **`@emotion/styled`**: ^11.10.6
+- **`@mui/material`**: ^5.11.14
+- **`@types/node`**: 18.15.10
+- **`@types/react`**: 18.0.29
+- **`@types/react-dom`**: 18.0.11
+- **`eslint`**: 8.36.0
+- **`eslint-config-next`**: 13.2.4
+- **`next`**: 13.2.4
+- **`openai`**: ^3.2.1
+- **`react`**: 18.2.0
+- **`react-dom`**: 18.2.0
+- **`react-markdown`**: ^8.0.6
+- **`typescript`**: 5.0.2
 
 ### **Installation**
 
 1. Clone the repository:
 
 ```
-bashCopy code
+
 git clone https://github.com/your-username/gpt-4-chat-ui.git
 
 ```
@@ -32,23 +49,16 @@ git clone https://github.com/your-username/gpt-4-chat-ui.git
 1. Change to the project directory:
 
 ```
-bashCopy code
+
 cd gpt-4-chat-ui
 
 ```
 
 1. Install dependencies:
 
-```
-bashCopy code
-yarn
 
 ```
 
-*or*
-
-```
-bashCopy code
 npm install
 
 ```
@@ -65,16 +75,9 @@ Make sure to replace **`your_openai_api_key_here`** with your actual OpenAI API 
 
 1. Run the development server:
 
-```
-bashCopy code
-yarn dev
 
 ```
 
-*or*
-
-```
-bashCopy code
 npm run dev
 
 ```
@@ -93,8 +96,8 @@ To deploy the application, follow the **[Next.js deployment documentation](https
 
 ## **Contributing**
 
-Please read **[CONTRIBUTING.md](https://chat.openai.com/CONTRIBUTING.md)** for details on our code of conduct and the process for submitting pull requests.
+
 
 ## **License**
 
-This project is licensed under the MIT License - see the **[LICENSE.md](https://chat.openai.com/LICENSE.md)** file for details.
+This project is licensed under the MIT License - 
