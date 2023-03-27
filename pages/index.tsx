@@ -213,11 +213,7 @@ useEffect(() => {
               <a href="https://openai.com/" target="_blank">
                 OpenAI
               </a>
-              . Built on{" "}
-              <a href="https://replit.com/@zahid/GPT-4-UI" target="_blank">
-                Replit
-              </a>
-              .
+              . 
             </p>
           </div>
         </div>
