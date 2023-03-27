@@ -95,7 +95,8 @@ To deploy the application, follow the **[Next.js deployment documentation](https
 - **[OpenAI API](https://beta.openai.com/docs/)** - The AI language model used
 
 ## **Contributing**
-
+Used Template and converted to Typescript
+https://replit.com/@zahid/GPT-4-Chat-UI
 
 
 ## **License**
