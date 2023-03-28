@@ -1,4 +1,4 @@
-# **GPT Chat UI**
+# **GPT 4 Chat UI**
 
 This project is a simple React-based chat interface that uses Next.js and communicates with OpenAI's GPT-4 (or GPT-3.5-turbo) language model to generate responses.
 
