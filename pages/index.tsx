@@ -4,6 +4,7 @@ import styles from "../styles/Home.module.css";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import CircularProgress from "@mui/material/CircularProgress";
+import Link from "next/link";
 
 export default function Home() {
   const [userInput, setUserInput] = useState("");
@@ -104,7 +105,7 @@ useEffect(() => {
       </Head>
       <div className={styles.topnav}>
         <div className={styles.navlogo}>
-          <a href="/">Chat UI</a>
+          <Link href="/">Chat UI</Link>
         </div>
         <div className={styles.navlinks}>
           <a
