@@ -1,9 +1,6 @@
 // Make sure to add OPENAI_API_KEY as a secret
 
-import {
-  Configuration,
-  OpenAIApi,
-  ChatCompletionRequestMessageRoleEnum,} from "openai";
+import { Configuration, OpenAIApi,ChatCompletionRequestMessageRoleEnum,} from "openai";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 
