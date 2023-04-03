@@ -96,7 +96,8 @@ To deploy the application, follow the **[Next.js deployment documentation](https
 
 ## **Contributing**
 Used Template and converted to Typescript
-https://replit.com/@zahid/GPT-4-Chat-UI
+Frontend of this repo is inspired by langchain-chat-nextjs **[LangChain-Chat-NextJS](https://github.com/zahidkhawaja/langchain-chat-nextjs)**
+
 
 
 ## **License**
