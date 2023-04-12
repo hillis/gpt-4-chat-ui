@@ -63,7 +63,7 @@ npm install
 
 ```
 
-1. Add your OpenAI API key to a **`.env.local`** file:
+1. Add your OpenAI API key to a **`.env`** file:
 
 ```
 envCopy code
