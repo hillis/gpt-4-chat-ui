@@ -79,7 +79,7 @@ useEffect(() => {
 
     setMessages((prevMessages) => [
       ...prevMessages,
-      { role: "assistant", content: data.result.content },
+      { role: "assistant", content: data.result },
     ]);
     setLoading(false);
   };
