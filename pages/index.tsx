@@ -14,7 +14,6 @@ export default function Home() {
   ]);
 
   const messageListRef = useRef<HTMLDivElement>(null);
-
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
 
