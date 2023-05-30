@@ -1,0 +1,9 @@
+coverage
+node-modules
+dist
+.vscode
+.git
+.dockerignore
+npm-debug.log
+debug.log
+junit.xml

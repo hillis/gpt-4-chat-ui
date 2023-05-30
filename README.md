@@ -88,6 +88,25 @@ Now you can open your browser and navigate to **`http://localhost:3000`** to see
 
 To deploy the application, follow the **[Next.js deployment documentation](https://nextjs.org/docs/deployment)**.
 
+## Running the app via Docker
+
+Add the relevant environment variables to your `.env` file. 
+
+Building a docker file:
+
+``` bash
+docker build -t jorisbors/gpt_4_chat .
+```
+
+Running the docker file:
+
+``` bash
+docker run -p 3000:3000 jorisbors/gpt_4_chat:latest 
+```
+
+This will expose the service on `http://localhost:3000/`
+
+
 ## **Built With**
 
 - **[Next.js](https://nextjs.org/)** - The React framework used
