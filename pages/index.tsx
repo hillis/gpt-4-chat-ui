@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent} from "react";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 import Image from "next/image";
@@ -16,7 +16,6 @@ export default function Home() {
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-
   // Auto scroll chat to bottom
   useEffect(() => {
     if (messageListRef.current) {
@@ -25,12 +24,12 @@ export default function Home() {
     }
   }, [messages]);
 
-// Focus on input field
-useEffect(() => {
-  if (textAreaRef.current) {
-    textAreaRef.current.focus();
-  }
-}, []);
+  // Focus on input field
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.focus();
+    }
+  }, []);
 
   // Handle errors
   const handleError = () => {
@@ -113,7 +112,6 @@ useEffect(() => {
           >
             Docs
           </a>
-          
         </div>
       </div>
       <main className={styles.main}>
@@ -175,7 +173,6 @@ useEffect(() => {
                 autoFocus={false}
                 rows={1}
                 maxLength={512}
-                
                 id="userInput"
                 name="userInput"
                 placeholder={
@@ -213,7 +210,7 @@ useEffect(() => {
               <a href="https://openai.com/" target="_blank">
                 OpenAI
               </a>
-              . 
+              .
             </p>
           </div>
         </div>

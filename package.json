@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "prettier --check '{*,pages/*,public/*,utils/*}.{ts,tsx,js,jsx,json}' && next lint",
+    "prettier": "prettier --write '{*,pages/*,public/*,utils/*}.{ts,tsx,js,jsx,json}'"
   },
   "dependencies": {
     "@emotion/react": "^11.10.8",

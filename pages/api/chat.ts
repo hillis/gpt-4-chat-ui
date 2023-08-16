@@ -3,9 +3,9 @@
 import {
   Configuration,
   OpenAIApi,
-  ChatCompletionRequestMessageRoleEnum,} from "openai";
+  ChatCompletionRequestMessageRoleEnum,
+} from "openai";
 import type { NextApiRequest, NextApiResponse } from "next";
-
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,10 +13,7 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-async function chatHandler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function chatHandler(req: NextApiRequest, res: NextApiResponse) {
   const completion = await openai.createChatCompletion({
     // Downgraded to GPT-3.5 due to high traffic. Sorry for the inconvenience.
     // If you have access to GPT-4, simply change the model to "gpt-4"
@@ -26,7 +23,6 @@ async function chatHandler(
         role: ChatCompletionRequestMessageRoleEnum.System,
         content: "You are a helpful assistant.",
       },
-      
     ].concat(req.body.messages),
     temperature: 0,
   });
