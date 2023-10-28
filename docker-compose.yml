@@ -1,0 +1,9 @@
+version: "2"
+services:
+  gpt-4-chat:
+    build: .
+    working_dir: /usr/src/app
+    environment:
+      OPENAI_API_KEY: 'Add your OpenAI API key here'
+    ports:
+    - 3000:3000
