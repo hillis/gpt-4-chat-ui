@@ -1,21 +1,26 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent} from "react";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import CircularProgress from "@mui/material/CircularProgress";
 import Link from "next/link";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! How can I help?" },
   ]);
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -25,20 +30,20 @@ export default function Home() {
     }
   }, [messages]);
 
-// Focus on input field
-useEffect(() => {
-  if (textAreaRef.current) {
-    textAreaRef.current.focus();
-  }
-}, []);
+  // Focus on input field
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.focus();
+    }
+  }, []);
 
   // Handle errors
-  const handleError = () => {
+  const handleError = (errorMessage?: string) => {
     setMessages((prevMessages) => [
       ...prevMessages,
       {
         role: "assistant",
-        content: "Oops! There seems to be an error. Please try again.",
+        content: errorMessage || "Oops! There seems to be an error. Please try again.",
       },
     ]);
     setLoading(false);
@@ -54,33 +59,50 @@ useEffect(() => {
     }
 
     setLoading(true);
-    const context = [...messages, { role: "user", content: userInput }];
+    const context: Message[] = [
+      ...messages,
+      { role: "user", content: userInput },
+    ];
     setMessages(context);
-
-    // Send chat history to API
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages: context }),
-    });
 
     // Reset user input
     setUserInput("");
 
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: context }),
+      });
 
-    if (!data) {
-      handleError();
-      return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const errorMsg =
+          response.status === 429
+            ? "Too many requests. Please wait a moment and try again."
+            : errorData?.error || "Something went wrong. Please try again.";
+        handleError(errorMsg);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data?.result?.content) {
+        handleError();
+        return;
+      }
+
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { role: "assistant", content: data.result.content },
+      ]);
+    } catch {
+      handleError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { role: "assistant", content: data.result.content },
-    ]);
-    setLoading(false);
   };
 
   // Prevent blank submissions and allow for multiline input
@@ -98,7 +120,7 @@ useEffect(() => {
     <>
       <Head>
         <title>Chat UI</title>
-        <meta name="description" content="OpenAI interface" />
+        <meta name="description" content="GPT-4o chat interface" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -108,61 +130,56 @@ useEffect(() => {
         </div>
         <div className={styles.navlinks}>
           <a
-            href="https://platform.openai.com/docs/models/gpt-4"
+            href="https://platform.openai.com/docs/models/gpt-4o"
             target="_blank"
+            rel="noopener noreferrer"
           >
             Docs
           </a>
-          
         </div>
       </div>
       <main className={styles.main}>
         <div className={styles.cloud}>
           <div ref={messageListRef} className={styles.messagelist}>
-            {messages.map((message, index) => {
-              return (
-                // The latest message sent by the user will be animated while waiting for a response
-                <div
-                  key={index}
-                  className={
-                    message.role === "user" &&
-                    loading &&
-                    index === messages.length - 1
-                      ? styles.usermessagewaiting
-                      : message.role === "assistant"
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={
+                  message.role === "user" &&
+                  loading &&
+                  index === messages.length - 1
+                    ? styles.usermessagewaiting
+                    : message.role === "assistant"
                       ? styles.apimessage
                       : styles.usermessage
-                  }
-                >
-                  {/* Display the correct icon depending on the message type */}
-                  {message.role === "assistant" ? (
-                    <Image
-                      src="/openai.png"
-                      alt="AI"
-                      width="30"
-                      height="30"
-                      className={styles.boticon}
-                      priority={true}
-                    />
-                  ) : (
-                    <Image
-                      src="/usericon.png"
-                      alt="Me"
-                      width="30"
-                      height="30"
-                      className={styles.usericon}
-                      priority={true}
-                    />
-                  )}
-                  <div className={styles.markdownanswer}>
-                    {/* Messages are being rendered in Markdown format */}
-                    <ReactMarkdown linkTarget={"_blank"}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
+                }
+              >
+                {message.role === "assistant" ? (
+                  <Image
+                    src="/openai.png"
+                    alt="AI"
+                    width="30"
+                    height="30"
+                    className={styles.boticon}
+                    priority={true}
+                  />
+                ) : (
+                  <Image
+                    src="/usericon.png"
+                    alt="Me"
+                    width="30"
+                    height="30"
+                    className={styles.usericon}
+                    priority={true}
+                  />
+                )}
+                <div className={styles.markdownanswer}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
         <div className={styles.center}>
@@ -175,7 +192,6 @@ useEffect(() => {
                 autoFocus={false}
                 rows={1}
                 maxLength={512}
-                
                 id="userInput"
                 name="userInput"
                 placeholder={
@@ -192,10 +208,9 @@ useEffect(() => {
               >
                 {loading ? (
                   <div className={styles.loadingwheel}>
-                    <CircularProgress color="inherit" size={20} />{" "}
+                    <CircularProgress color="inherit" size={20} />
                   </div>
                 ) : (
-                  // Send icon SVG in input field
                   <svg
                     viewBox="0 0 20 20"
                     className={styles.svgicon}
@@ -210,10 +225,14 @@ useEffect(() => {
           <div className={styles.footer}>
             <p>
               Powered by{" "}
-              <a href="https://openai.com/" target="_blank">
+              <a
+                href="https://openai.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 OpenAI
               </a>
-              . 
+              .
             </p>
           </div>
         </div>
