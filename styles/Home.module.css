@@ -71,6 +71,278 @@
   font-size: 0.85rem;
 }
 
+/* --- Document toggle button --- */
+
+.docstoggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: 1px solid #30373d;
+  border-radius: 0.4rem;
+  color: #ECECF1;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+}
+
+.docstoggle:hover {
+  border-color: #16bed7;
+}
+
+.docstoggleactive {
+  border-color: #16bed7;
+  background: rgba(22, 190, 215, 0.1);
+}
+
+.docsbadge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  background: #16bed7;
+  color: #0e1524;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Use docs checkbox --- */
+
+.usedocslabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.usedocscheckbox {
+  accent-color: #16bed7;
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.usedocstext {
+  color: #ECECF1;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* --- Document panel --- */
+
+.docspanel {
+  background: #151b2e;
+  border-bottom: 1px solid #30373d;
+  padding: 1rem 1.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.docspanelheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.docspanelheader h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ECECF1;
+}
+
+.docspanelclose {
+  background: none;
+  border: none;
+  color: #5f6368;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.docspanelclose:hover {
+  color: #ECECF1;
+}
+
+.docspaneldesc {
+  color: #5f6368;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Upload section --- */
+
+.docsupload {
+  margin-bottom: 1rem;
+}
+
+.docsuploadrow {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.docnameinput {
+  flex: 1;
+  background: #0e1524;
+  color: #ECECF1;
+  border: 1px solid #30373d;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.docnameinput:focus {
+  border-color: #16bed7;
+}
+
+.docnameinput::placeholder {
+  color: #5f6368;
+}
+
+.docsfilebutton {
+  background: #1d2333;
+  color: #ECECF1;
+  border: 1px solid #30373d;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.docsfilebutton:hover {
+  border-color: #16bed7;
+}
+
+.doccontenttextarea {
+  width: 100%;
+  background: #0e1524;
+  color: #ECECF1;
+  border: 1px solid #30373d;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 0.5rem;
+}
+
+.doccontenttextarea:focus {
+  border-color: #16bed7;
+}
+
+.doccontenttextarea::placeholder {
+  color: #5f6368;
+}
+
+.docsuploadbutton {
+  background: #16bed7;
+  color: #0e1524;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.docsuploadbutton:hover {
+  opacity: 0.9;
+}
+
+.docsuploadbutton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Document list --- */
+
+.docslist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.docsempty {
+  color: #5f6368;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.docsitem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0e1524;
+  border: 1px solid #30373d;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.docsiteminfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.docsitemname {
+  color: #ECECF1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docsitemmeta {
+  color: #5f6368;
+  font-size: 0.7rem;
+}
+
+.docsdeletebutton {
+  background: none;
+  border: none;
+  color: #5f6368;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.docsdeletebutton:hover {
+  color: #e74c3c;
+}
+
+/* --- Active docs indicator above input --- */
+
+.docsactiveindicator {
+  color: #16bed7;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+  text-align: center;
+}
+
+/* --- Existing styles --- */
+
 .cloudform {
   position: relative;
 }
@@ -288,8 +560,17 @@
   }
 
   .modelselect {
-    width: 100%;
+    width: auto;
     font-size: 0.85rem;
+    flex: 1;
+  }
+
+  .docspanel {
+    padding: 0.75rem 1rem;
+  }
+
+  .docsuploadrow {
+    flex-direction: column;
   }
 
   .markdownanswer code {

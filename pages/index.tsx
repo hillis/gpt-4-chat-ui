@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useCallback, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 import Image from "next/image";
@@ -18,6 +18,14 @@ interface ModelOption {
   provider: string;
 }
 
+interface DocumentInfo {
+  id: string;
+  name: string;
+  addedAt: string;
+  chunkCount: number;
+  charCount: number;
+}
+
 export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,8 +36,30 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<ModelOption | null>(null);
   const [modelsLoading, setModelsLoading] = useState(true);
 
+  // Document state
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [useDocuments, setUseDocuments] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [docName, setDocName] = useState("");
+  const [docContent, setDocContent] = useState("");
+
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch documents
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
 
   // Fetch available models on mount
   useEffect(() => {
@@ -50,7 +80,8 @@ export default function Home() {
       }
     }
     fetchModels();
-  }, []);
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -108,6 +139,7 @@ export default function Home() {
           messages: context,
           provider: selectedModel.provider,
           model: selectedModel.id,
+          useDocuments: useDocuments && documents.length > 0,
         }),
       });
 
@@ -150,6 +182,70 @@ export default function Home() {
     }
   };
 
+  // Handle file selection — read text from file
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDocName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result;
+      if (typeof text === "string") {
+        setDocContent(text);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset file input so the same file can be selected again
+    e.target.value = "";
+  };
+
+  // Upload document
+  const handleUploadDocument = async () => {
+    if (!docName.trim() || !docContent.trim()) return;
+
+    setUploading(true);
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: docName.trim(), content: docContent }),
+      });
+
+      if (res.ok) {
+        setDocName("");
+        setDocContent("");
+        fetchDocuments();
+      } else {
+        const err = await res.json().catch(() => null);
+        alert(err?.error || "Failed to upload document");
+      }
+    } catch {
+      alert("Failed to upload document");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Delete document
+  const handleDeleteDocument = async (id: string) => {
+    try {
+      const res = await fetch("/api/documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (res.ok) {
+        fetchDocuments();
+      }
+    } catch {
+      // silently fail
+    }
+  };
+
   // Group models by provider for the dropdown
   const providerLabels: Record<string, string> = {
     openai: "OpenAI",
@@ -181,6 +277,33 @@ export default function Home() {
           <Link href="/">Chat UI</Link>
         </div>
         <div className={styles.navlinks}>
+          <button
+            className={`${styles.docstoggle} ${docsOpen ? styles.docstoggleactive : ""}`}
+            onClick={() => setDocsOpen(!docsOpen)}
+            title="Document memory"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            {documents.length > 0 && (
+              <span className={styles.docsbadge}>{documents.length}</span>
+            )}
+          </button>
+          {documents.length > 0 && (
+            <label className={styles.usedocslabel} title="Include document context in AI responses">
+              <input
+                type="checkbox"
+                checked={useDocuments}
+                onChange={(e) => setUseDocuments(e.target.checked)}
+                className={styles.usedocscheckbox}
+              />
+              <span className={styles.usedocstext}>Use docs</span>
+            </label>
+          )}
           {modelsLoading ? (
             <span className={styles.modelloading}>Loading models...</span>
           ) : models.length === 0 ? (
@@ -212,6 +335,91 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Document panel */}
+      {docsOpen && (
+        <div className={styles.docspanel}>
+          <div className={styles.docspanelheader}>
+            <h3>Document Memory</h3>
+            <button
+              className={styles.docspanelclose}
+              onClick={() => setDocsOpen(false)}
+            >
+              &times;
+            </button>
+          </div>
+          <p className={styles.docspaneldesc}>
+            Upload documents to give the AI context from your files. Toggle &quot;Use docs&quot; to include relevant excerpts in your conversations.
+          </p>
+
+          {/* Upload section */}
+          <div className={styles.docsupload}>
+            <div className={styles.docsuploadrow}>
+              <input
+                type="text"
+                placeholder="Document name..."
+                value={docName}
+                onChange={(e) => setDocName(e.target.value)}
+                className={styles.docnameinput}
+                maxLength={200}
+              />
+              <button
+                className={styles.docsfilebutton}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose file
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.md,.csv,.json,.xml,.html,.log,.js,.ts,.py,.java,.c,.cpp,.go,.rs,.yaml,.yml,.toml,.ini,.cfg,.conf,.sh,.bat,.sql,.r,.rb,.php,.swift,.kt"
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+              />
+            </div>
+            <textarea
+              placeholder="Paste document content here, or choose a file above..."
+              value={docContent}
+              onChange={(e) => setDocContent(e.target.value)}
+              className={styles.doccontenttextarea}
+              rows={4}
+            />
+            <button
+              className={styles.docsuploadbutton}
+              onClick={handleUploadDocument}
+              disabled={uploading || !docName.trim() || !docContent.trim()}
+            >
+              {uploading ? "Uploading..." : "Upload Document"}
+            </button>
+          </div>
+
+          {/* Document list */}
+          <div className={styles.docslist}>
+            {documents.length === 0 ? (
+              <p className={styles.docsempty}>No documents uploaded yet.</p>
+            ) : (
+              documents.map((doc) => (
+                <div key={doc.id} className={styles.docsitem}>
+                  <div className={styles.docsiteminfo}>
+                    <span className={styles.docsitemname}>{doc.name}</span>
+                    <span className={styles.docsitemmeta}>
+                      {doc.chunkCount} chunks &middot; {Math.round(doc.charCount / 1000)}KB
+                    </span>
+                  </div>
+                  <button
+                    className={styles.docsdeletebutton}
+                    onClick={() => handleDeleteDocument(doc.id)}
+                    title="Remove document"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       <main className={styles.main}>
         <div className={styles.cloud}>
           <div ref={messageListRef} className={styles.messagelist}>
@@ -259,6 +467,11 @@ export default function Home() {
         <div className={styles.center}>
           <div className={styles.cloudform}>
             <form onSubmit={handleSubmit}>
+              {useDocuments && documents.length > 0 && (
+                <div className={styles.docsactiveindicator}>
+                  Using {documents.length} document{documents.length !== 1 ? "s" : ""} for context
+                </div>
+              )}
               <textarea
                 disabled={loading || models.length === 0}
                 onKeyDown={handleEnter}

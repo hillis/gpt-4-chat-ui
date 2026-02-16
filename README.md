@@ -12,6 +12,7 @@ A multi-model AI chat interface built with Next.js and TypeScript. Supports **Op
 - **Auto-detection** -- Only shows providers you've configured API keys for
 - **Responsive design** -- Works on desktop and mobile
 - **Markdown rendering** -- AI responses render with full GitHub-flavored markdown (code blocks, tables, lists, links)
+- **Document memory (RAG)** -- Upload documents and the AI will use relevant excerpts to answer your questions
 - **Security hardened** -- Input validation, rate limiting, system prompt injection prevention, security headers
 - **Dark theme** -- Clean, modern dark UI
 
@@ -78,10 +79,13 @@ npm run dev
 
 ```
 ├── lib/
-│   └── providers.ts        # Provider abstraction (OpenAI, Claude, Gemini, Ollama)
+│   ├── providers.ts        # Provider abstraction (OpenAI, Claude, Gemini, Ollama)
+│   └── documents.ts        # Document store, chunking, and TF-IDF search
+├── data/                    # Local document storage (gitignored)
 ├── pages/
 │   ├── api/
 │   │   ├── chat.ts          # POST /api/chat — sends messages to selected provider
+│   │   ├── documents.ts     # GET/POST/DELETE /api/documents — document management
 │   │   └── providers.ts     # GET /api/providers — returns available models
 │   ├── index.tsx            # Main chat UI
 │   ├── _app.tsx             # Next.js app wrapper
@@ -108,6 +112,29 @@ Browser ──POST /api/chat──▶ API Route ──▶ Provider Router
 ```
 
 The frontend calls `GET /api/providers` on load to discover available models, then sends chat messages to `POST /api/chat` with the selected `provider` and `model`. The backend validates the request, routes to the correct SDK, and returns a unified response format.
+
+## Document Memory (RAG)
+
+Upload documents to give the AI local context from your files. This works with **any** provider -- no embedding API needed.
+
+### How it works
+
+1. Click the document icon in the nav bar to open the document panel
+2. Upload text files or paste content directly
+3. Documents are chunked into ~800 character segments and stored locally in `data/documents.json`
+4. Toggle **"Use docs"** in the nav bar to enable document context
+5. When enabled, each message triggers a TF-IDF keyword search across all document chunks
+6. The top 5 most relevant excerpts are injected into the conversation as context
+
+### Supported file types
+
+Any text-based file: `.txt`, `.md`, `.csv`, `.json`, `.xml`, `.html`, `.py`, `.js`, `.ts`, `.java`, `.go`, `.rs`, `.sql`, `.yaml`, `.toml`, `.sh`, and more.
+
+### Limits
+
+- Max 50 documents
+- Max 200KB per document
+- Top 5 chunks retrieved per query
 
 ## Adding a New Provider
 

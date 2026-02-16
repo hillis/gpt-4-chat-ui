@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { findProvider, getProviders, type ChatMessage } from "../../lib/providers";
+import { searchDocuments, buildContextFromChunks } from "../../lib/documents";
 
 // Simple in-memory rate limiter: max requests per IP per window
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
@@ -33,6 +34,7 @@ interface ValidatedRequest {
   messages: ChatMessage[];
   provider: string;
   model: string;
+  useDocuments: boolean;
 }
 
 const ALLOWED_PROVIDER_NAMES = new Set(["openai", "anthropic", "gemini", "ollama"]);
@@ -40,7 +42,7 @@ const ALLOWED_PROVIDER_NAMES = new Set(["openai", "anthropic", "gemini", "ollama
 function validateRequest(body: unknown): ValidatedRequest | null {
   if (!body || typeof body !== "object") return null;
 
-  const { messages, provider, model } = body as Record<string, unknown>;
+  const { messages, provider, model, useDocuments } = body as Record<string, unknown>;
 
   // Validate provider
   if (typeof provider !== "string" || !ALLOWED_PROVIDER_NAMES.has(provider)) {
@@ -77,7 +79,12 @@ function validateRequest(body: unknown): ValidatedRequest | null {
     validated.push({ role, content });
   }
 
-  return { messages: validated, provider, model };
+  return {
+    messages: validated,
+    provider,
+    model,
+    useDocuments: useDocuments === true,
+  };
 }
 
 export default async function chatHandler(
@@ -124,8 +131,31 @@ export default async function chatHandler(
     return res.status(400).json({ error: "Invalid model for the selected provider" });
   }
 
+  // Build document context if enabled
+  let documentContext = "";
+  if (request.useDocuments) {
+    // Use the last user message as the search query
+    const lastUserMessage = [...request.messages]
+      .reverse()
+      .find((m) => m.role === "user");
+
+    if (lastUserMessage) {
+      const relevantChunks = searchDocuments(lastUserMessage.content, 5);
+      documentContext = buildContextFromChunks(relevantChunks);
+    }
+  }
+
   try {
-    const content = await providerConfig.chat(request.model, request.messages);
+    // Prepend document context to the messages as a system-level instruction
+    const messagesWithContext: ChatMessage[] = documentContext
+      ? [
+          { role: "user" as const, content: documentContext },
+          { role: "assistant" as const, content: "I'll use these document excerpts to help answer your questions." },
+          ...request.messages,
+        ]
+      : request.messages;
+
+    const content = await providerConfig.chat(request.model, messagesWithContext);
 
     return res.status(200).json({
       result: { role: "assistant", content },
