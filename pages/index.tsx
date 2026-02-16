@@ -1,21 +1,56 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent} from "react";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import CircularProgress from "@mui/material/CircularProgress";
 import Link from "next/link";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+}
 
 export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! How can I help?" },
   ]);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState<ModelOption | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Fetch available models on mount
+  useEffect(() => {
+    async function fetchModels() {
+      try {
+        const res = await fetch("/api/providers");
+        if (res.ok) {
+          const data = await res.json();
+          setModels(data.models);
+          if (data.models.length > 0) {
+            setSelectedModel(data.models[0]);
+          }
+        }
+      } catch {
+        // Provider fetch failed — models will remain empty
+      } finally {
+        setModelsLoading(false);
+      }
+    }
+    fetchModels();
+  }, []);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -25,20 +60,20 @@ export default function Home() {
     }
   }, [messages]);
 
-// Focus on input field
-useEffect(() => {
-  if (textAreaRef.current) {
-    textAreaRef.current.focus();
-  }
-}, []);
+  // Focus on input field
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.focus();
+    }
+  }, []);
 
   // Handle errors
-  const handleError = () => {
+  const handleError = (errorMessage?: string) => {
     setMessages((prevMessages) => [
       ...prevMessages,
       {
         role: "assistant",
-        content: "Oops! There seems to be an error. Please try again.",
+        content: errorMessage || "Oops! There seems to be an error. Please try again.",
       },
     ]);
     setLoading(false);
@@ -49,38 +84,59 @@ useEffect(() => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (userInput.trim() === "") {
+    if (userInput.trim() === "" || !selectedModel) {
       return;
     }
 
     setLoading(true);
-    const context = [...messages, { role: "user", content: userInput }];
+    const context: Message[] = [
+      ...messages,
+      { role: "user", content: userInput },
+    ];
     setMessages(context);
-
-    // Send chat history to API
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages: context }),
-    });
 
     // Reset user input
     setUserInput("");
 
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: context,
+          provider: selectedModel.provider,
+          model: selectedModel.id,
+        }),
+      });
 
-    if (!data) {
-      handleError();
-      return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const errorMsg =
+          response.status === 429
+            ? "Too many requests. Please wait a moment and try again."
+            : errorData?.error || "Something went wrong. Please try again.";
+        handleError(errorMsg);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data?.result?.content) {
+        handleError();
+        return;
+      }
+
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { role: "assistant", content: data.result.content },
+      ]);
+    } catch {
+      handleError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { role: "assistant", content: data.result.content },
-    ]);
-    setLoading(false);
   };
 
   // Prevent blank submissions and allow for multiline input
@@ -94,11 +150,29 @@ useEffect(() => {
     }
   };
 
+  // Group models by provider for the dropdown
+  const providerLabels: Record<string, string> = {
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    gemini: "Google",
+    ollama: "Ollama",
+  };
+
+  const groupedModels = models.reduce<Record<string, ModelOption[]>>(
+    (groups, model) => {
+      const key = model.provider;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(model);
+      return groups;
+    },
+    {},
+  );
+
   return (
     <>
       <Head>
         <title>Chat UI</title>
-        <meta name="description" content="OpenAI interface" />
+        <meta name="description" content="Multi-model AI chat interface — GPT-5.2, Claude, Gemini, Ollama" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -107,79 +181,99 @@ useEffect(() => {
           <Link href="/">Chat UI</Link>
         </div>
         <div className={styles.navlinks}>
-          <a
-            href="https://platform.openai.com/docs/models/gpt-4"
-            target="_blank"
-          >
-            Docs
-          </a>
-          
+          {modelsLoading ? (
+            <span className={styles.modelloading}>Loading models...</span>
+          ) : models.length === 0 ? (
+            <span className={styles.modelloading}>No providers configured</span>
+          ) : (
+            <select
+              className={styles.modelselect}
+              value={selectedModel ? `${selectedModel.provider}:${selectedModel.id}` : ""}
+              onChange={(e) => {
+                const [provider, ...idParts] = e.target.value.split(":");
+                const id = idParts.join(":");
+                const model = models.find(
+                  (m) => m.provider === provider && m.id === id,
+                );
+                if (model) setSelectedModel(model);
+              }}
+              disabled={loading}
+            >
+              {Object.entries(groupedModels).map(([provider, providerModels]) => (
+                <optgroup key={provider} label={providerLabels[provider] || provider}>
+                  {providerModels.map((model) => (
+                    <option key={`${model.provider}:${model.id}`} value={`${model.provider}:${model.id}`}>
+                      {model.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          )}
         </div>
       </div>
       <main className={styles.main}>
         <div className={styles.cloud}>
           <div ref={messageListRef} className={styles.messagelist}>
-            {messages.map((message, index) => {
-              return (
-                // The latest message sent by the user will be animated while waiting for a response
-                <div
-                  key={index}
-                  className={
-                    message.role === "user" &&
-                    loading &&
-                    index === messages.length - 1
-                      ? styles.usermessagewaiting
-                      : message.role === "assistant"
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={
+                  message.role === "user" &&
+                  loading &&
+                  index === messages.length - 1
+                    ? styles.usermessagewaiting
+                    : message.role === "assistant"
                       ? styles.apimessage
                       : styles.usermessage
-                  }
-                >
-                  {/* Display the correct icon depending on the message type */}
-                  {message.role === "assistant" ? (
-                    <Image
-                      src="/openai.png"
-                      alt="AI"
-                      width="30"
-                      height="30"
-                      className={styles.boticon}
-                      priority={true}
-                    />
-                  ) : (
-                    <Image
-                      src="/usericon.png"
-                      alt="Me"
-                      width="30"
-                      height="30"
-                      className={styles.usericon}
-                      priority={true}
-                    />
-                  )}
-                  <div className={styles.markdownanswer}>
-                    {/* Messages are being rendered in Markdown format */}
-                    <ReactMarkdown linkTarget={"_blank"}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
+                }
+              >
+                {message.role === "assistant" ? (
+                  <Image
+                    src="/openai.png"
+                    alt="AI"
+                    width="30"
+                    height="30"
+                    className={styles.boticon}
+                    priority={true}
+                  />
+                ) : (
+                  <Image
+                    src="/usericon.png"
+                    alt="Me"
+                    width="30"
+                    height="30"
+                    className={styles.usericon}
+                    priority={true}
+                  />
+                )}
+                <div className={styles.markdownanswer}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
         <div className={styles.center}>
           <div className={styles.cloudform}>
             <form onSubmit={handleSubmit}>
               <textarea
-                disabled={loading}
+                disabled={loading || models.length === 0}
                 onKeyDown={handleEnter}
                 ref={textAreaRef}
                 autoFocus={false}
                 rows={1}
                 maxLength={512}
-                
                 id="userInput"
                 name="userInput"
                 placeholder={
-                  loading ? "Waiting for response..." : "Type your question..."
+                  models.length === 0
+                    ? "No AI providers configured..."
+                    : loading
+                      ? "Waiting for response..."
+                      : "Type your question..."
                 }
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
@@ -187,15 +281,14 @@ useEffect(() => {
               />
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || models.length === 0}
                 className={styles.generatebutton}
               >
                 {loading ? (
                   <div className={styles.loadingwheel}>
-                    <CircularProgress color="inherit" size={20} />{" "}
+                    <CircularProgress color="inherit" size={20} />
                   </div>
                 ) : (
-                  // Send icon SVG in input field
                   <svg
                     viewBox="0 0 20 20"
                     className={styles.svgicon}
@@ -210,10 +303,11 @@ useEffect(() => {
           <div className={styles.footer}>
             <p>
               Powered by{" "}
-              <a href="https://openai.com/" target="_blank">
-                OpenAI
-              </a>
-              . 
+              <a href="https://openai.com/" target="_blank" rel="noopener noreferrer">OpenAI</a>,{" "}
+              <a href="https://anthropic.com/" target="_blank" rel="noopener noreferrer">Anthropic</a>,{" "}
+              <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer">Google</a>
+              {" & "}
+              <a href="https://ollama.com/" target="_blank" rel="noopener noreferrer">Ollama</a>.
             </p>
           </div>
         </div>
