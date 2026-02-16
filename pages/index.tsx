@@ -12,15 +12,45 @@ interface Message {
   content: string;
 }
 
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+}
+
 export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi there! How can I help?" },
   ]);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState<ModelOption | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch available models on mount
+  useEffect(() => {
+    async function fetchModels() {
+      try {
+        const res = await fetch("/api/providers");
+        if (res.ok) {
+          const data = await res.json();
+          setModels(data.models);
+          if (data.models.length > 0) {
+            setSelectedModel(data.models[0]);
+          }
+        }
+      } catch {
+        // Provider fetch failed — models will remain empty
+      } finally {
+        setModelsLoading(false);
+      }
+    }
+    fetchModels();
+  }, []);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -54,7 +84,7 @@ export default function Home() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (userInput.trim() === "") {
+    if (userInput.trim() === "" || !selectedModel) {
       return;
     }
 
@@ -74,7 +104,11 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages: context }),
+        body: JSON.stringify({
+          messages: context,
+          provider: selectedModel.provider,
+          model: selectedModel.id,
+        }),
       });
 
       if (!response.ok) {
@@ -116,11 +150,29 @@ export default function Home() {
     }
   };
 
+  // Group models by provider for the dropdown
+  const providerLabels: Record<string, string> = {
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    gemini: "Google",
+    ollama: "Ollama",
+  };
+
+  const groupedModels = models.reduce<Record<string, ModelOption[]>>(
+    (groups, model) => {
+      const key = model.provider;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(model);
+      return groups;
+    },
+    {},
+  );
+
   return (
     <>
       <Head>
         <title>Chat UI</title>
-        <meta name="description" content="GPT-4o chat interface" />
+        <meta name="description" content="Multi-model AI chat interface" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -129,13 +181,35 @@ export default function Home() {
           <Link href="/">Chat UI</Link>
         </div>
         <div className={styles.navlinks}>
-          <a
-            href="https://platform.openai.com/docs/models/gpt-4o"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Docs
-          </a>
+          {modelsLoading ? (
+            <span className={styles.modelloading}>Loading models...</span>
+          ) : models.length === 0 ? (
+            <span className={styles.modelloading}>No providers configured</span>
+          ) : (
+            <select
+              className={styles.modelselect}
+              value={selectedModel ? `${selectedModel.provider}:${selectedModel.id}` : ""}
+              onChange={(e) => {
+                const [provider, ...idParts] = e.target.value.split(":");
+                const id = idParts.join(":");
+                const model = models.find(
+                  (m) => m.provider === provider && m.id === id,
+                );
+                if (model) setSelectedModel(model);
+              }}
+              disabled={loading}
+            >
+              {Object.entries(groupedModels).map(([provider, providerModels]) => (
+                <optgroup key={provider} label={providerLabels[provider] || provider}>
+                  {providerModels.map((model) => (
+                    <option key={`${model.provider}:${model.id}`} value={`${model.provider}:${model.id}`}>
+                      {model.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          )}
         </div>
       </div>
       <main className={styles.main}>
@@ -186,7 +260,7 @@ export default function Home() {
           <div className={styles.cloudform}>
             <form onSubmit={handleSubmit}>
               <textarea
-                disabled={loading}
+                disabled={loading || models.length === 0}
                 onKeyDown={handleEnter}
                 ref={textAreaRef}
                 autoFocus={false}
@@ -195,7 +269,11 @@ export default function Home() {
                 id="userInput"
                 name="userInput"
                 placeholder={
-                  loading ? "Waiting for response..." : "Type your question..."
+                  models.length === 0
+                    ? "No AI providers configured..."
+                    : loading
+                      ? "Waiting for response..."
+                      : "Type your question..."
                 }
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
@@ -203,7 +281,7 @@ export default function Home() {
               />
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || models.length === 0}
                 className={styles.generatebutton}
               >
                 {loading ? (
@@ -225,14 +303,11 @@ export default function Home() {
           <div className={styles.footer}>
             <p>
               Powered by{" "}
-              <a
-                href="https://openai.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                OpenAI
-              </a>
-              .
+              <a href="https://openai.com/" target="_blank" rel="noopener noreferrer">OpenAI</a>,{" "}
+              <a href="https://anthropic.com/" target="_blank" rel="noopener noreferrer">Anthropic</a>,{" "}
+              <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer">Google</a>
+              {" & "}
+              <a href="https://ollama.com/" target="_blank" rel="noopener noreferrer">Ollama</a>.
             </p>
           </div>
         </div>

@@ -1,14 +1,5 @@
-import OpenAI from "openai";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+import { findProvider, getProviders, type ChatMessage } from "../../lib/providers";
 
 // Simple in-memory rate limiter: max requests per IP per window
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
@@ -38,52 +29,55 @@ setInterval(() => {
   }
 }, RATE_LIMIT_WINDOW_MS);
 
-function validateMessages(body: unknown): ChatMessage[] | null {
-  if (!body || typeof body !== "object" || !("messages" in body)) {
+interface ValidatedRequest {
+  messages: ChatMessage[];
+  provider: string;
+  model: string;
+}
+
+const ALLOWED_PROVIDER_NAMES = new Set(["openai", "anthropic", "gemini", "ollama"]);
+
+function validateRequest(body: unknown): ValidatedRequest | null {
+  if (!body || typeof body !== "object") return null;
+
+  const { messages, provider, model } = body as Record<string, unknown>;
+
+  // Validate provider
+  if (typeof provider !== "string" || !ALLOWED_PROVIDER_NAMES.has(provider)) {
     return null;
   }
 
-  const { messages } = body as { messages: unknown };
-
-  if (!Array.isArray(messages)) {
+  // Validate model
+  if (typeof model !== "string" || model.length === 0 || model.length > 100) {
     return null;
   }
+
+  // Validate messages
+  if (!Array.isArray(messages)) return null;
 
   const MAX_MESSAGES = 50;
   const MAX_CONTENT_LENGTH = 4000;
 
-  if (messages.length > MAX_MESSAGES) {
-    return null;
-  }
+  if (messages.length > MAX_MESSAGES) return null;
 
   const validated: ChatMessage[] = [];
 
   for (const msg of messages) {
-    if (!msg || typeof msg !== "object") {
-      return null;
-    }
+    if (!msg || typeof msg !== "object") return null;
 
     const { role, content } = msg as { role: unknown; content: unknown };
 
     // Only allow "user" and "assistant" roles from the client.
-    // This prevents clients from injecting "system" role messages
-    // to override the system prompt.
-    if (role !== "user" && role !== "assistant") {
-      return null;
-    }
+    // This prevents clients from injecting "system" role messages.
+    if (role !== "user" && role !== "assistant") return null;
 
-    if (typeof content !== "string" || content.length === 0) {
-      return null;
-    }
-
-    if (content.length > MAX_CONTENT_LENGTH) {
-      return null;
-    }
+    if (typeof content !== "string" || content.length === 0) return null;
+    if (content.length > MAX_CONTENT_LENGTH) return null;
 
     validated.push({ role, content });
   }
 
-  return validated;
+  return { messages: validated, provider, model };
 }
 
 export default async function chatHandler(
@@ -96,9 +90,9 @@ export default async function chatHandler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Check that the API key is configured
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("OPENAI_API_KEY is not configured");
+  // Check that at least one provider is configured
+  if (getProviders().length === 0) {
+    console.error("No AI providers configured");
     return res.status(500).json({ error: "Server configuration error" });
   }
 
@@ -113,45 +107,42 @@ export default async function chatHandler(
   }
 
   // Validate and sanitize input
-  const messages = validateMessages(req.body);
-  if (!messages) {
+  const request = validateRequest(req.body);
+  if (!request) {
     return res.status(400).json({ error: "Invalid request body" });
   }
 
+  // Find the requested provider
+  const providerConfig = findProvider(request.provider);
+  if (!providerConfig) {
+    return res.status(400).json({ error: "Requested provider is not available" });
+  }
+
+  // Verify the model belongs to this provider
+  const validModel = providerConfig.models.some((m) => m.id === request.model);
+  if (!validModel) {
+    return res.status(400).json({ error: "Invalid model for the selected provider" });
+  }
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system" as const,
-          content: "You are a helpful assistant.",
-        },
-        ...messages,
-      ],
-      temperature: 0,
-    });
-
-    const result = completion.choices[0]?.message;
-
-    if (!result) {
-      return res.status(502).json({ error: "No response from AI model" });
-    }
+    const content = await providerConfig.chat(request.model, request.messages);
 
     return res.status(200).json({
-      result: { role: result.role, content: result.content },
+      result: { role: "assistant", content },
     });
   } catch (error: unknown) {
     // Log the full error server-side for debugging
-    console.error("OpenAI API error:", error);
+    console.error(`${request.provider} API error:`, error);
 
     // Return a generic error to the client — never leak API keys or internal details
-    if (
-      error instanceof OpenAI.APIError &&
-      error.status === 429
-    ) {
-      return res.status(429).json({ error: "AI service is busy. Please try again later." });
-    }
+    const message =
+      error instanceof Error && error.message.includes("429")
+        ? "AI service is busy. Please try again later."
+        : "An error occurred while processing your request";
 
-    return res.status(500).json({ error: "An error occurred while processing your request" });
+    const status =
+      error instanceof Error && error.message.includes("429") ? 429 : 500;
+
+    return res.status(status).json({ error: message });
   }
 }

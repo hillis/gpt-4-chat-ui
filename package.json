@@ -1,6 +1,6 @@
 {
-  "name": "gpt-4-chat-ui",
-  "version": "1.0.0",
+  "name": "chat-ui",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
+    "@google/genai": "^0.7.0",
     "@mui/material": "^5.16.14",
     "next": "14.2.25",
     "openai": "^4.82.0",
