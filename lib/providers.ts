@@ -32,11 +32,12 @@ function createOpenAIProvider(): ProviderConfig | null {
   return {
     provider: "openai",
     models: [
+      { id: "gpt-5.2", name: "GPT-5.2", provider: "openai" },
+      { id: "gpt-5.2-chat-latest", name: "GPT-5.2 Instant", provider: "openai" },
+      { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
+      { id: "gpt-5-nano", name: "GPT-5 Nano", provider: "openai" },
       { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
       { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
-      { id: "gpt-4.1", name: "GPT-4.1", provider: "openai" },
-      { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", provider: "openai" },
-      { id: "gpt-4.1-nano", name: "GPT-4.1 Nano", provider: "openai" },
       { id: "o3-mini", name: "o3-mini", provider: "openai" },
     ],
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
@@ -67,9 +68,9 @@ function createAnthropicProvider(): ProviderConfig | null {
   return {
     provider: "anthropic",
     models: [
+      { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "anthropic" },
       { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5", provider: "anthropic" },
       { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic" },
-      { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "anthropic" },
     ],
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
       const response = await client.messages.create({
@@ -102,9 +103,10 @@ function createGeminiProvider(): ProviderConfig | null {
   return {
     provider: "gemini",
     models: [
+      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "gemini" },
+      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "gemini" },
+      { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash-Lite", provider: "gemini" },
       { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "gemini" },
-      { id: "gemini-2.5-pro-preview-05-06", name: "Gemini 2.5 Pro", provider: "gemini" },
-      { id: "gemini-2.5-flash-preview-05-20", name: "Gemini 2.5 Flash", provider: "gemini" },
     ],
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
       // Convert to Gemini's content format

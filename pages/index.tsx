@@ -172,7 +172,7 @@ export default function Home() {
     <>
       <Head>
         <title>Chat UI</title>
-        <meta name="description" content="Multi-model AI chat interface" />
+        <meta name="description" content="Multi-model AI chat interface — GPT-5.2, Claude, Gemini, Ollama" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
