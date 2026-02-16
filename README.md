@@ -120,20 +120,30 @@ Upload documents to give the AI local context from your files. This works with *
 ### How it works
 
 1. Click the document icon in the nav bar to open the document panel
-2. Upload text files or paste content directly
-3. Documents are chunked into ~800 character segments and stored locally in `data/documents.json`
-4. Toggle **"Use docs"** in the nav bar to enable document context
-5. When enabled, each message triggers a TF-IDF keyword search across all document chunks
-6. The top 5 most relevant excerpts are injected into the conversation as context
+2. Upload files (PDF, DOCX, or text) or paste content directly
+3. PDF and DOCX files are parsed server-side to extract text automatically
+4. Documents are chunked into ~800 character segments and stored locally in `data/documents.json`
+5. Toggle **"Use docs"** in the nav bar to enable document context
+6. When enabled, each message triggers a TF-IDF keyword search across all document chunks
+7. The top 5 most relevant excerpts are injected into the conversation as context
 
 ### Supported file types
 
-Any text-based file: `.txt`, `.md`, `.csv`, `.json`, `.xml`, `.html`, `.py`, `.js`, `.ts`, `.java`, `.go`, `.rs`, `.sql`, `.yaml`, `.toml`, `.sh`, and more.
+| Type | Extensions |
+|---|---|
+| **Documents** | `.pdf`, `.docx` |
+| **Text / Markdown** | `.txt`, `.md`, `.csv`, `.log` |
+| **Data** | `.json`, `.xml`, `.html`, `.yaml`, `.yml`, `.toml` |
+| **Code** | `.js`, `.ts`, `.jsx`, `.tsx`, `.py`, `.java`, `.c`, `.cpp`, `.go`, `.rs`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh` |
+| **Config** | `.ini`, `.cfg`, `.conf`, `.bat` |
+
+PDF and DOCX files are parsed on the server using [pdf-parse](https://www.npmjs.com/package/pdf-parse) and [mammoth](https://www.npmjs.com/package/mammoth). All other file types are read as plain text.
 
 ### Limits
 
 - Max 50 documents
-- Max 200KB per document
+- Max 10MB file upload size
+- Max 200KB extracted text per document
 - Top 5 chunks retrieved per query
 
 ## Adding a New Provider
@@ -199,6 +209,8 @@ Set your API keys as environment variables in your hosting platform's dashboard.
 - [OpenAI SDK](https://github.com/openai/openai-node) -- GPT-5.2 / GPT-4o
 - [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-typescript) -- Claude Opus 4.6 / Sonnet 4.5
 - [Google GenAI SDK](https://github.com/googleapis/js-genai) -- Gemini 2.5
+- [pdf-parse](https://www.npmjs.com/package/pdf-parse) -- PDF text extraction
+- [mammoth](https://github.com/mwilliamson/mammoth.js) -- DOCX text extraction
 - [React Markdown](https://github.com/remarkjs/react-markdown) -- Markdown rendering
 - [Material UI](https://mui.com/) -- Loading spinner component
 

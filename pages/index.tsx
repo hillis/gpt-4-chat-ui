@@ -182,41 +182,72 @@ export default function Home() {
     }
   };
 
-  // Handle file selection — read text from file
+  // Binary file extensions that must be uploaded to the server for parsing
+  const BINARY_EXTENSIONS = new Set(["pdf", "docx"]);
+
+  // Handle file selection — read text files client-side, store binary files for server upload
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setDocName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result;
-      if (typeof text === "string") {
-        setDocContent(text);
-      }
-    };
-    reader.readAsText(file);
+    const ext = file.name.toLowerCase().split(".").pop() || "";
+
+    if (BINARY_EXTENSIONS.has(ext)) {
+      // Binary file — store for server-side upload
+      setPendingFile(file);
+      setDocContent(`[${ext.toUpperCase()} file: ${file.name} — ${Math.round(file.size / 1024)}KB]`);
+    } else {
+      // Text file — read client-side
+      setPendingFile(null);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result;
+        if (typeof text === "string") {
+          setDocContent(text);
+        }
+      };
+      reader.readAsText(file);
+    }
 
     // Reset file input so the same file can be selected again
     e.target.value = "";
   };
 
-  // Upload document
+  // Upload document — uses multipart for binary files, JSON for pasted text
   const handleUploadDocument = async () => {
-    if (!docName.trim() || !docContent.trim()) return;
+    if (!docName.trim() || (!docContent.trim() && !pendingFile)) return;
 
     setUploading(true);
     try {
-      const res = await fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: docName.trim(), content: docContent }),
-      });
+      let res: Response;
+
+      if (pendingFile) {
+        // Binary file — send as multipart form data for server-side parsing
+        const formData = new FormData();
+        formData.append("file", pendingFile);
+        formData.append("name", docName.trim());
+
+        res = await fetch("/api/documents", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        // Text paste — send as JSON
+        res = await fetch("/api/documents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: docName.trim(), content: docContent }),
+        });
+      }
 
       if (res.ok) {
         setDocName("");
         setDocContent("");
+        setPendingFile(null);
         fetchDocuments();
       } else {
         const err = await res.json().catch(() => null);
@@ -349,7 +380,7 @@ export default function Home() {
             </button>
           </div>
           <p className={styles.docspaneldesc}>
-            Upload documents to give the AI context from your files. Toggle &quot;Use docs&quot; to include relevant excerpts in your conversations.
+            Upload documents (PDF, DOCX, or text files) to give the AI context from your files. Toggle &quot;Use docs&quot; to include relevant excerpts in your conversations.
           </p>
 
           {/* Upload section */}
@@ -372,7 +403,7 @@ export default function Home() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.md,.csv,.json,.xml,.html,.log,.js,.ts,.py,.java,.c,.cpp,.go,.rs,.yaml,.yml,.toml,.ini,.cfg,.conf,.sh,.bat,.sql,.r,.rb,.php,.swift,.kt"
+                accept=".pdf,.docx,.txt,.md,.csv,.json,.xml,.html,.log,.js,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.hpp,.go,.rs,.yaml,.yml,.toml,.ini,.cfg,.conf,.sh,.bat,.sql,.r,.rb,.php,.swift,.kt"
                 onChange={handleFileSelect}
                 style={{ display: "none" }}
               />
@@ -380,16 +411,20 @@ export default function Home() {
             <textarea
               placeholder="Paste document content here, or choose a file above..."
               value={docContent}
-              onChange={(e) => setDocContent(e.target.value)}
+              onChange={(e) => {
+                setDocContent(e.target.value);
+                if (pendingFile) setPendingFile(null);
+              }}
+              readOnly={!!pendingFile}
               className={styles.doccontenttextarea}
               rows={4}
             />
             <button
               className={styles.docsuploadbutton}
               onClick={handleUploadDocument}
-              disabled={uploading || !docName.trim() || !docContent.trim()}
+              disabled={uploading || !docName.trim() || (!docContent.trim() && !pendingFile)}
             >
-              {uploading ? "Uploading..." : "Upload Document"}
+              {uploading ? "Processing..." : pendingFile ? "Upload & Extract Text" : "Upload Document"}
             </button>
           </div>
 
