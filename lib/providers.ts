@@ -32,13 +32,14 @@ function createOpenAIProvider(): ProviderConfig | null {
   return {
     provider: "openai",
     models: [
-      { id: "gpt-5.2", name: "GPT-5.2", provider: "openai" },
-      { id: "gpt-5.2-chat-latest", name: "GPT-5.2 Instant", provider: "openai" },
-      { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "openai" },
-      { id: "gpt-5-nano", name: "GPT-5 Nano", provider: "openai" },
+      { id: "gpt-4.1", name: "GPT-4.1", provider: "openai" },
+      { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", provider: "openai" },
+      { id: "gpt-4.1-nano", name: "GPT-4.1 Nano", provider: "openai" },
       { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
       { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
+      { id: "o3", name: "o3", provider: "openai" },
       { id: "o3-mini", name: "o3-mini", provider: "openai" },
+      { id: "o4-mini", name: "o4-mini", provider: "openai" },
     ],
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
       const completion = await client.chat.completions.create({
@@ -69,7 +70,7 @@ function createAnthropicProvider(): ProviderConfig | null {
     provider: "anthropic",
     models: [
       { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "anthropic" },
-      { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5", provider: "anthropic" },
+      { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic" },
       { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic" },
     ],
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
@@ -136,6 +137,21 @@ function createOllamaProvider(): ProviderConfig | null {
   const baseUrl = process.env.OLLAMA_BASE_URL;
   if (!baseUrl) return null;
 
+  // Validate URL scheme to prevent SSRF via misconfiguration
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(baseUrl);
+  } catch {
+    console.error("Invalid OLLAMA_BASE_URL:", baseUrl);
+    return null;
+  }
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    console.error("OLLAMA_BASE_URL must use http or https");
+    return null;
+  }
+
+  const sanitizedBase = parsedUrl.origin + parsedUrl.pathname.replace(/\/+$/, "");
+
   // Default models — users can run any model they've pulled into Ollama
   const defaultModels = (process.env.OLLAMA_MODELS || "llama3.3,mistral,phi4")
     .split(",")
@@ -150,29 +166,37 @@ function createOllamaProvider(): ProviderConfig | null {
       provider: "ollama",
     })),
     async chat(model: string, messages: ChatMessage[]): Promise<string> {
-      const url = `${baseUrl.replace(/\/+$/, "")}/api/chat`;
+      const url = `${sanitizedBase}/api/chat`;
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: "You are a helpful assistant." },
-            ...messages,
-          ],
-          stream: false,
-        }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120_000);
 
-      if (!response.ok) {
-        throw new Error(`Ollama returned ${response.status}`);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: "You are a helpful assistant." },
+              ...messages,
+            ],
+            stream: false,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ollama returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data?.message?.content;
+        if (!content) throw new Error("No response from Ollama");
+        return content;
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const data = await response.json();
-      const content = data?.message?.content;
-      if (!content) throw new Error("No response from Ollama");
-      return content;
     },
   };
 }

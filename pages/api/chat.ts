@@ -90,6 +90,12 @@ export default async function chatHandler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Validate Content-Type to mitigate CSRF via form submissions
+  const contentType = req.headers["content-type"];
+  if (!contentType || !contentType.includes("application/json")) {
+    return res.status(415).json({ error: "Content-Type must be application/json" });
+  }
+
   // Check that at least one provider is configured
   if (getProviders().length === 0) {
     console.error("No AI providers configured");
